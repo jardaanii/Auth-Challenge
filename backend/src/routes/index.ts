@@ -4,6 +4,11 @@ import { withAccelerate } from "@prisma/extension-accelerate";
 import bcrypt from "bcryptjs";
 import { sign } from "hono/jwt";
 import { validateSignupInput } from "../middleware";
+import {
+  signupInput,
+  SigninInput,
+  signinInput,
+} from "@trozon/authchallenge-common";
 
 type Bindings = {
   DATABASE_URL: string;
@@ -15,6 +20,17 @@ export const apiRoutes = new Hono<{ Bindings: Bindings }>();
 
 apiRoutes.post("/v1/signup", validateSignupInput, async (c) => {
   const body = await c.req.json();
+
+  const { success } = signupInput.safeParse(body);
+
+  if (!success) {
+    return c.json({
+      success: false,
+      status: 404,
+      message: "Inputs are invalid or notpresent",
+    });
+  }
+
   const prisma = new PrismaClient({
     datasourceUrl: c.env.DATABASE_URL,
   }).$extends(withAccelerate());
@@ -52,6 +68,14 @@ apiRoutes.post("/v1/signup", validateSignupInput, async (c) => {
 
 apiRoutes.post("/v1/signin", validateSignupInput, async (c) => {
   const body = await c.req.json();
+  const { success } = signinInput.safeParse(body);
+  if (!success) {
+    return c.json({
+      success: false,
+      status: 404,
+      message: "Inputs are invalid or notpresent",
+    });
+  }
   const prisma = new PrismaClient({
     datasourceUrl: c.env.DATABASE_URL,
   }).$extends(withAccelerate());
