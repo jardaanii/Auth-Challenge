@@ -6,9 +6,10 @@
   },
   "dependencies": {
     "@prisma/client": "^5.19.1",
+    "@prisma/extension-accelerate": "^1.1.0",
+    "@types/bcryptjs": "^2.4.6",
     "bcrypt": "^5.1.1",
     "hono": "^4.5.11",
-    "jsonwebtoken": "^9.0.2",
     "prisma": "^5.19.1"
   },
   "devDependencies": {
