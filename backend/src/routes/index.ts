@@ -3,6 +3,7 @@ import { PrismaClient } from "@prisma/client/edge";
 import { withAccelerate } from "@prisma/extension-accelerate";
 import bcrypt from "bcryptjs";
 import { sign } from "hono/jwt";
+import { validateSignupInput } from "../middleware";
 
 type Bindings = {
   DATABASE_URL: string;
@@ -12,7 +13,7 @@ type Bindings = {
 
 export const apiRoutes = new Hono<{ Bindings: Bindings }>();
 
-apiRoutes.post("/v1/signup", async (c) => {
+apiRoutes.post("/v1/signup", validateSignupInput, async (c) => {
   const body = await c.req.json();
   const prisma = new PrismaClient({
     datasourceUrl: c.env.DATABASE_URL,
@@ -33,7 +34,6 @@ apiRoutes.post("/v1/signup", async (c) => {
       {
         id: response.id,
         email: body.email,
-        name: body.name,
       },
       c.env.JWT_SECRET
     );
@@ -50,13 +50,45 @@ apiRoutes.post("/v1/signup", async (c) => {
   }
 });
 
-apiRoutes.post("/v1/signin", async (c) => {
+apiRoutes.post("/v1/signin", validateSignupInput, async (c) => {
+  const body = await c.req.json();
   const prisma = new PrismaClient({
     datasourceUrl: c.env.DATABASE_URL,
   }).$extends(withAccelerate());
 
-  //    const token = await sign({ id: id, email: email }, c.env.JWT_SECRET);
-  return c.text("Hello form signin");
+  const response = await prisma.user.findFirst({
+    where: {
+      email: body.email,
+    },
+    select: {
+      id: true,
+      password: true,
+    },
+  });
+
+  if (!response) {
+    return c.text("Not able to find the user");
+  }
+  const isPasswordValid = await bcrypt.compare(
+    body.password,
+    response.password
+  );
+  if (!isPasswordValid) {
+    c.status(401);
+    return c.json({ message: "Invalid credentials" });
+  }
+  const token = await sign(
+    {
+      id: response.id,
+      email: body.email,
+    },
+    c.env.JWT_SECRET
+  );
+  return c.json({
+    status: 200,
+    message: "Successfully logged in the user",
+    data: token,
+  });
 });
 
 export default apiRoutes;
